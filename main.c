@@ -2,33 +2,69 @@
 #include <string.h>
 #include <stdlib.h>
 
-// TODO:exceed buffer limit
+//parses the string into many array of strings seperated by either
+//    1) NULL pointer to indicate semicolans.
+//    2) NULL pointer followed by an array with null character as the first element,to indicate end of line
+//eg:
+//   cat file ; ls -l
+//	 will be parsed into [ ['c','a','t'], ['f', 'i', 'l', 'e'], NULL, ['l', 's'], ['-','l'],  NULL,['\0'] ]
 char **parse(char *line)
 {
-	int BUFFER_SIZE = 10;
-	char **rv = (char **)malloc(BUFFER_SIZE * (sizeof(char *)));
-	int arr_size = 10, curr_arr_size = 0, next_index_of_line = 0;
+	unsigned int BUFFER_SIZE = 10;
+	unsigned int arr_size = BUFFER_SIZE, curr_arr_size = 0, next_index_of_line = 0;
+	char **rv = (char **)malloc(arr_size * (sizeof(char *)));
+
+	if (!rv)
+	{
+		printf("\nDynammic allocation failed");
+	}
+
 	while (line[next_index_of_line] != '\0')
 	{
+		if (curr_arr_size == (arr_size - 1))
+		{
+			arr_size += BUFFER_SIZE;
+			rv = (char **)realloc(rv, arr_size * (sizeof(char *)));
+			if (!rv)
+			{
+				printf("\nDynammic allocation failed");
+			}
+		}
+
+		// if it is a semicolon, make the next array as 1 as its first element to indicate completion of previous command
+		if (line[next_index_of_line] == ';')
+		{
+			rv[curr_arr_size] = NULL;
+			next_index_of_line++;
+			curr_arr_size++;
+			continue;
+		}
 		rv[curr_arr_size] = (char *)malloc(20 * sizeof(char)); //assuming each word doesnt exceed 20 chars
 		int curr_word_index = 0;
-		while (line[next_index_of_line] != ' ' && line[next_index_of_line] != '\0')
+		while (line[next_index_of_line] != ';' && line[next_index_of_line] != ' ' && line[next_index_of_line] != '\0')
 		{
 			rv[curr_arr_size][curr_word_index] = line[next_index_of_line];
 			curr_word_index++;
 			next_index_of_line++;
 		}
+
 		rv[curr_arr_size][curr_word_index] = '\0';
 		if (line[next_index_of_line] == ' ')
 			while (line[++next_index_of_line] == ' ')
 				;
+
 		curr_arr_size++;
 	}
-	rv[curr_arr_size] = (char *)malloc(1);
+	rv[curr_arr_size] = NULL;
+	curr_arr_size++;
+	rv[curr_arr_size] = (char *)malloc(1 * sizeof(char));
 	rv[curr_arr_size][0] = '\0';
 	return rv;
 }
 
+void execute(char *program, char **args)
+{
+}
 void loop()
 {
 	char *line;
@@ -57,10 +93,13 @@ void loop()
 		int i = 0;
 		// pointer_to_str_arr points to an array where each element points to the start of a word
 		pointer_to_str_arr = parse(line);
-
-		while (pointer_to_str_arr[i][0] != '\0')
+		printf("out of parse");
+		while ((!(pointer_to_str_arr[i])) || pointer_to_str_arr[i][0] != '\0')
 		{
-			printf("%s\n", pointer_to_str_arr[i]);
+			if (!(pointer_to_str_arr[i]))
+				printf("Hi\n");
+			else
+				printf("%s\n", pointer_to_str_arr[i]);
 			i++;
 		}
 		// execute(str_arr[0], str_arr[1]);
