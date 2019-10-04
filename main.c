@@ -2,6 +2,9 @@
 #include <string.h>
 #include <stdlib.h>
 
+// flag=1 when exit statement is encountered
+int flag = 0;
+
 //parses the string into many array of strings seperated by either
 //    1) NULL pointer to indicate semicolans.
 //    2) NULL pointer followed by an array with null character as the first element,to indicate end of line
@@ -62,15 +65,50 @@ char **parse(char *line)
 	return rv;
 }
 
-void execute(char *program, char **args)
+void execute(char **pointer_to_str_arr)
 {
+	int i = 0;
+	do
+	{
+		// each block is of the form [NULLs, a command, NULLs]
+
+		//for NULLs
+		if (pointer_to_str_arr[i] == NULL)
+			while (pointer_to_str_arr[++i] == NULL)
+				;
+
+		// for commands
+		if (strcmp(pointer_to_str_arr[i], "exit") == 0)
+		{
+			if (pointer_to_str_arr[i + 1] != NULL)
+			{
+				while (pointer_to_str_arr[++i] != NULL)
+					;
+				printf("\nexit statement doesnt have parameters");
+			}
+			else
+			{
+				flag = 1;
+			}
+		}
+		else if (pointer_to_str_arr[i][0] != '\0')
+		{
+			// execvp(pointer_to_str_arr[i], &(pointer_to_str_arr[i]))
+		}
+
+		// for NULLs
+		if (pointer_to_str_arr[i] == NULL)
+			while (pointer_to_str_arr[++i] == NULL)
+				;
+	} while (pointer_to_str_arr[i][0] != '\0');
 }
+
 void loop()
 {
 	char *line;
 	char **pointer_to_str_arr;
 	int bytes_read;
-	while (1)
+	while (flag == 0)
 	{
 		printf("\nxD>>");
 
@@ -93,21 +131,13 @@ void loop()
 		int i = 0;
 		// pointer_to_str_arr points to an array where each element points to the start of a word
 		pointer_to_str_arr = parse(line);
-		printf("out of parse");
-		while ((!(pointer_to_str_arr[i])) || pointer_to_str_arr[i][0] != '\0')
-		{
-			if (!(pointer_to_str_arr[i]))
-				printf("Hi\n");
-			else
-				printf("%s\n", pointer_to_str_arr[i]);
-			i++;
-		}
-		// execute(str_arr[0], str_arr[1]);
+		execute(pointer_to_str_arr);
 	}
 }
 int main()
 {
 	printf("Entering Shell !!!\n");
 	loop();
+	printf("\nTerminating...");
 	return 0;
 }
