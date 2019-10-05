@@ -1,9 +1,55 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 // flag=1 when exit statement is encountered
 int flag = 0;
+
+//turns flag to 1(if there are no arguments for exit), and returns next index to be executed
+int exit_program(char **pointer_to_str_arr, int index)
+{
+	if (pointer_to_str_arr[index + 1] != NULL) //if it has other parameters
+	{
+		while (pointer_to_str_arr[++index] != NULL)
+			;
+		printf("\nexit statement doesnt have parameters");
+	}
+	else
+	{
+		// exit the program after implementing all other commands
+		flag = 1;
+		index++;
+	}
+	return index;
+}
+
+// Executes 'cd' command and then returns next index to be checked
+int cd(char **pointer_to_str_arr, int i)
+{
+	// it has to wait for all the child process to finish, as they would have changes the directory structure
+	int status = 0, wpid = 0;
+	while ((wpid = wait(&status)) > 0)
+		;
+
+	if (pointer_to_str_arr[i + 1] == NULL)
+	{
+		printf("\nToo few arguments for \"cd\"");
+	}
+	else if (pointer_to_str_arr[i + 2] != NULL)
+	{
+		printf("\nToo many arguments for \"cd\"");
+	}
+	else
+	{
+		if (chdir(pointer_to_str_arr[i + 1]) != 0)
+			printf("\nInvalid arguments for \"cd\"");
+	}
+	while (pointer_to_str_arr[++i] != NULL)
+		;
+	return i;
+}
 
 /*
 parses the string into many array of strings seperated by either
@@ -59,11 +105,12 @@ char **parse(char *line)
 			curr_arr_size++;
 		}
 
-		//if a space
+		//skip all spaces
 		if (line[next_index_of_line] == ' ')
 			while (line[++next_index_of_line] == ' ')
 				;
 	}
+
 	rv[curr_arr_size] = NULL;
 	curr_arr_size++;
 	rv[curr_arr_size] = (char *)malloc(1 * sizeof(char));
@@ -74,11 +121,13 @@ char **parse(char *line)
 void execute(char **pointer_to_str_arr)
 {
 	int i = 0;
+	pid_t pid = 0;
+	int status = 0;
 	do
 	{
 		// each block is of the form [NULLs, a command, NULLs]
 
-		//for NULLs
+		//skip all NULLs
 		if (pointer_to_str_arr[i] == NULL)
 			while (pointer_to_str_arr[++i] == NULL)
 				;
@@ -86,29 +135,47 @@ void execute(char **pointer_to_str_arr)
 		// for commands
 		if (strcmp(pointer_to_str_arr[i], "exit") == 0)
 		{
-			if (pointer_to_str_arr[i + 1] != NULL)
-			{
-				while (pointer_to_str_arr[++i] != NULL)
-					;
-				printf("\nexit statement doesnt have parameters");
-			}
-			else
-			{
-				flag = 1;
-			}
+			i = exit_program(pointer_to_str_arr, i);
+		}
+		else if (strcmp(pointer_to_str_arr[i], "cd") == 0)
+		{
+			i = cd(pointer_to_str_arr, i);
 		}
 		else if (pointer_to_str_arr[i][0] != '\0')
 		{
-			// execvp(pointer_to_str_arr[i], &(pointer_to_str_arr[i]))
-			while (pointer_to_str_arr[++i] != NULL)
-				;
+			pid = fork();
+			if (pid < 0)
+			{
+				printf("\nError during fork");
+				break;
+			}
+			else if (pid == 0)
+			{
+				// child process
+				printf("\n");
+				if (execvp(pointer_to_str_arr[i], &(pointer_to_str_arr[i])) == -1)
+					printf("\nError in child process...check your command");
+				exit(0);
+			}
+			else
+			{
+				// parent process
+
+				while (pointer_to_str_arr[++i] != NULL)
+					;
+			}
 		}
 
-		// for NULLs
+		// skip all NULLs
 		if (pointer_to_str_arr[i] == NULL)
 			while (pointer_to_str_arr[++i] == NULL)
 				;
 	} while (pointer_to_str_arr[i][0] != '\0');
+
+	// if parent process, wait for all child processes to complete
+	if (pid > 0)
+		while ((pid = wait(&status)) > 0)
+			;
 }
 
 void loop()
@@ -118,7 +185,7 @@ void loop()
 	int bytes_read;
 	while (flag == 0)
 	{
-		printf("\nxD>>");
+		printf("\n>>");
 
 		long unsigned int LINE_BUFFER_SIZE = 10;
 		line = (char *)malloc(LINE_BUFFER_SIZE * sizeof(char));
@@ -140,16 +207,7 @@ void loop()
 
 		// pointer_to_str_arr points to an array where each element points to the start of a word
 		pointer_to_str_arr = parse(line);
-		while (i < 12)
-		{
-			if (pointer_to_str_arr[i] == NULL)
-				printf("NULL\n");
-			else
-			{
-				printf("%s\n", pointer_to_str_arr[i]);
-			}
-			i++;
-		}
+		// execute all the commands in the parsed line
 		execute(pointer_to_str_arr);
 	}
 }
