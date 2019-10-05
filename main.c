@@ -6,6 +6,8 @@
 
 // flag=1 when exit statement is encountered
 int flag = 0;
+//batch_file =1 for batch input
+int batch_file = 0;
 
 //turns flag to 1(if there are no arguments for exit), and returns next index to be executed
 int exit_program(char **pointer_to_str_arr, int index)
@@ -185,7 +187,8 @@ void loop()
 	int bytes_read;
 	while (flag == 0)
 	{
-		printf("\n>>");
+		if (!batch_file)
+			printf("\n>>");
 
 		long unsigned int LINE_BUFFER_SIZE = 10;
 		line = (char *)malloc(LINE_BUFFER_SIZE * sizeof(char));
@@ -211,8 +214,22 @@ void loop()
 		execute(pointer_to_str_arr);
 	}
 }
-int main()
+
+int main(int argc, char **argv)
 {
+	if (argv[1] != NULL)
+	{
+		if (argv[2] != NULL)
+		{
+			printf("Too many arguments");
+			exit(0);
+		}
+		else
+		{
+			freopen(argv[1], "r", stdin);
+			batch_file = 1;
+		}
+	}
 	printf("Entering Shell !!!\n");
 	loop();
 	printf("\nTerminating...");
